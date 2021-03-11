@@ -2,26 +2,20 @@ package com.eomcs.pms.handler;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import com.eomcs.util.Prompt;
+import com.eomcs.pms.domain.Task;
 
-public class BoardSearchHandler implements Command {
+public class TaskListHandler implements Command {
 
   @Override
   public void service(DataInputStream in, DataOutputStream out) throws Exception {
-    String keyword = Prompt.inputString("검색어? ");
+    System.out.println("[작업 목록]");
 
-    if (keyword.length() == 0) {
-      System.out.println("검색어를 입력하세요.");
-      return;
-    }
-
-    // 서버에 지정한 번호의 게시글을 요청한다.
-    out.writeUTF("board/selectByKeyword");
-    out.writeInt(1);
-    out.writeUTF(keyword);
+    // 서버에 데이터 목록을 달라고 요청한다.
+    out.writeUTF("task/selectall");
+    out.writeInt(0);
     out.flush();
 
-    // 서버의 응답을 받는다.
+    // 서버의 응답 데이터를 읽는다.
     String status = in.readUTF();
     int length = in.readInt();
 
@@ -30,26 +24,15 @@ public class BoardSearchHandler implements Command {
       return;
     }
 
-    if (length == 0) {
-      System.out.println("검색어에 해당하는 게시글이 없습니다.");
-      return;
-    }
-
     for (int i = 0; i < length; i++) {
       String[] fields = in.readUTF().split(",");
-
       System.out.printf("%s, %s, %s, %s, %s\n", 
           fields[0], 
           fields[1], 
           fields[2],
-          fields[3],
+          Task.getStatusLabel(Integer.parseInt(fields[3])),
           fields[4]);
     }
   }
+
 }
-
-
-
-
-
-

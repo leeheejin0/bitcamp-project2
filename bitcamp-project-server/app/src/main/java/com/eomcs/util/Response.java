@@ -17,6 +17,4 @@ public class Response {
   public void appendData(String data) {
     dataList.add(data);
   }
-
-
 }

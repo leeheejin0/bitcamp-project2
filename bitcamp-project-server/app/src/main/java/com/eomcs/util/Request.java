@@ -4,11 +4,11 @@ import java.util.List;
 
 public class Request {
   private String command;
-  private List<String> dataList;
+  private List<String> data;
 
   @Override
   public String toString() {
-    return "Request [command=" + command + ", data=" + dataList + "]";
+    return "Request [command=" + command + ", data=" + data + "]";
   }
   public String getCommand() {
     return command;
@@ -17,9 +17,9 @@ public class Request {
     this.command = command;
   }
   public List<String> getData() {
-    return dataList;
+    return data;
   }
   public void setData(List<String> data) {
-    this.dataList = data;
-  }  
+    this.data = data;
+  }
 }

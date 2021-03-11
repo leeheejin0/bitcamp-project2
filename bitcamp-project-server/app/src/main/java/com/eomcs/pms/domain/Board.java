@@ -30,6 +30,16 @@ public class Board {
         + "]";
   }
 
+  public String toCsvString() {
+    return String.format("%d,%s,%s,%s,%s,%d", 
+        this.getNo(),
+        this.getTitle(),
+        this.getContent(),
+        this.getWriter(),
+        this.getRegisteredDate().toString(),
+        this.getViewCount());
+  }
+
   // 다음과 같이 인스턴스를 생성해주는 메서드를 
   // "factory method"라 부른다.
   // 팩토리 메서드 패턴

@@ -4,16 +4,16 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import com.eomcs.util.Prompt;
 
-public class BoardDeleteHandler implements Command {
+public class TaskDeleteHandler implements Command {
 
   @Override
   public void service(DataInputStream in, DataOutputStream out) throws Exception {
-    System.out.println("[게시글 삭제]");
+    System.out.println("[작업 삭제]");
 
     int no = Prompt.inputInt("번호? ");
 
     // 서버에 해당 번호의 게시글이 있는지 조회한다.
-    out.writeUTF("board/select");
+    out.writeUTF("task/select");
     out.writeInt(1);
     out.writeUTF(Integer.toString(no));
     out.flush();
@@ -30,12 +30,12 @@ public class BoardDeleteHandler implements Command {
 
     String input = Prompt.inputString("정말 삭제하시겠습니까?(y/N) ");
     if (!input.equalsIgnoreCase("Y")) {
-      System.out.println("게시글 삭제를 취소하였습니다.");
+      System.out.println("작업 삭제를 취소하였습니다.");
       return;
     }
 
     // 서버에 데이터 삭제를 요청한다.
-    out.writeUTF("board/delete");
+    out.writeUTF("task/delete");
     out.writeInt(1);
     out.writeUTF(Integer.toString(no));
     out.flush();
@@ -48,13 +48,7 @@ public class BoardDeleteHandler implements Command {
       System.out.println(in.readUTF());
       return;
     }
+    System.out.println("작업을 삭제하였습니다.");
 
-    System.out.println("게시글을 삭제하였습니다.");
   }
 }
-
-
-
-
-
-
