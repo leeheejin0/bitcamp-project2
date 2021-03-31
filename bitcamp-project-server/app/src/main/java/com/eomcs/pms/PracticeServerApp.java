@@ -16,29 +16,29 @@ import com.eomcs.pms.table.TaskTable;
 import com.eomcs.util.Request;
 import com.eomcs.util.Response;
 
-//1) 외부의 스레드 사용
-//2) 스태틱 중첩 클래스로 정의한 스레드 사용
-//3) inner 클래스로 정의한 스레드 사용
-//4) 로컬 클래스로 정의한 스레드 사용
-//5) 익명 클래스로 정의한 스레드 사용
-//6) 직접 스레드를 만들지 않고 스레드 객체사 사용할 Runnable 구현체를 정의한다.
-//7) Runnable 구현체를 lambda 문법으로 정의한다.
-public class ServerApp {
+// 1) 외부의 스레드 사용
+// 2) 스태틱 중첩 클래스로 정의한 스레드 사용
+// 3) inner 클래스로 정의한 스레드 사용
+// 4) 로컬 클래스로 정의한 스레드 사용
+// 5) 익명 클래스로 정의한 스레드 사용
+// 6) 직접 스레드를 만들지 않고 스레드 객체를 사용할 때 Runnable 구현체를 정의한다. 
+public class PracticeServerApp {
 
   int port;
   HashMap<String,DataTable> tableMap = new HashMap<>();
 
   public static void main(String[] args) {
-    ServerApp app = new ServerApp(8888);
+    PracticeServerApp app = new PracticeServerApp(8888);
     app.service();
   }
 
-  public ServerApp(int port) {
+  public PracticeServerApp(int port) {
     this.port = port;
   }
 
   public void service() {
-    // 요청을 처리할 테이블 객체를 준비한다.
+
+    // 요청을 처리할 테이블 객체를 준비한다. 
     tableMap.put("board/", new BoardTable());
     tableMap.put("member/", new MemberTable());
     tableMap.put("project/", new ProjectTable());
@@ -50,7 +50,19 @@ public class ServerApp {
       System.out.println("서버 실행!");
 
       while (true) {
+
         Socket socket = serverSocket.accept();
+
+        // 익명클래스
+        new Thread() {
+          @Override
+          public void run() {
+            processRequest(socket);
+          };
+        }.start();
+
+
+        // 람다
         new Thread(() -> processRequest(socket)).start();
       }
 
@@ -59,6 +71,8 @@ public class ServerApp {
       e.printStackTrace();
     }
   }
+
+
 
   private DataTable findDataTable(String command) {
     Set<String> keySet = tableMap.keySet();
@@ -115,10 +129,11 @@ public class ServerApp {
     }
   }
 
-  public void processRequest(Socket socket) {
-    try (DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-        DataInputStream in = new DataInputStream(socket.getInputStream())) {
 
+  public void processRequest(Socket socket) {
+
+    try (DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+        DataInputStream in = new DataInputStream(socket.getInputStream())){
       while (true) {
         Request request = receiveRequest(in);
         log(request);
@@ -132,29 +147,27 @@ public class ServerApp {
 
         if (dataTable != null) {
           Response response = new Response();
+
           try {
-            dataTable.service(request, response);          
+            dataTable.service(request, response);
             sendResponse(
                 out, 
                 "success", 
                 response.getDataList().toArray(new String[response.getDataList().size()]));
-
           } catch (Exception e) {
             sendResponse(
                 out, 
-                "error", 
-                e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+                "error",
+                response.getDataList().toArray(new String[response.getDataList().size()]));
           }
-
         } else {
-          sendResponse(out, "error", "해당 요청을 처리할 수 없습니다!");
+          sendResponse(out, "error", "해당 요청을 처리할 수 없습니다. ");
         }
       }
-
     } catch (Exception e) {
-      System.out.println("클라이언트의 요청을 처리하는 중에 오류 발생!");
+      System.out.println("클라이언트의 요청을 처리하는동안 오류 발생!");
       e.printStackTrace();
-    }
+    }  
   }
 
 }

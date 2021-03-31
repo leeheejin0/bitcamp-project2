@@ -1,32 +1,21 @@
 package com.eomcs.pms.handler;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import com.eomcs.pms.dao.ProjectDao;
 import com.eomcs.util.Prompt;
 
 public class ProjectDeleteHandler implements Command {
 
+  ProjectDao projectDao;
+
+  public ProjectDeleteHandler(ProjectDao projectDao) {
+    this.projectDao = projectDao;
+  }
+
   @Override
-  public void service(DataInputStream in, DataOutputStream out) throws Exception {
+  public void service() throws Exception {
     System.out.println("[프로젝트 삭제]");
 
     int no = Prompt.inputInt("번호? ");
-
-    // 서버에 해당 번호의 게시글이 있는지 조회한다.
-    out.writeUTF("project/select");
-    out.writeInt(1);
-    out.writeUTF(Integer.toString(no));
-    out.flush();
-
-    // 서버의 응답을 읽는다.
-    String status = in.readUTF();
-    in.readInt();
-    String data = in.readUTF();
-
-    if (status.equals("error")) {
-      System.out.println(data);
-      return;
-    }
 
     String input = Prompt.inputString("정말 삭제하시겠습니까?(y/N) ");
     if (!input.equalsIgnoreCase("Y")) {
@@ -34,23 +23,12 @@ public class ProjectDeleteHandler implements Command {
       return;
     }
 
-    // 서버에 데이터 삭제를 요청한다.
-    out.writeUTF("project/delete");
-    out.writeInt(1);
-    out.writeUTF(Integer.toString(no));
-    out.flush();
+    if (projectDao.delete(no) == 0) {
+      System.out.println("해당 번호의 프로젝트가 없습니다.");
 
-    // 서버의 응답을 읽는다.
-    status = in.readUTF();
-    in.readInt();
-
-    if (status.equals("error")) {
-      System.out.println(in.readUTF());
-      return;
+    } else {
+      System.out.println("프로젝트를 삭제하였습니다.");
     }
-
-    System.out.println("프로젝트 삭제를 취소하였습니다.");
-
   }
 }
 

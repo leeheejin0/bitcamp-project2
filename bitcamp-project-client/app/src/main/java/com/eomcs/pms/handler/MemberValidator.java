@@ -1,51 +1,46 @@
 package com.eomcs.pms.handler;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import com.eomcs.pms.dao.MemberDao;
+import com.eomcs.pms.domain.Member;
 import com.eomcs.util.Prompt;
 
 public class MemberValidator {
 
-  public static String inputMember(
-      String promptTitle, DataInputStream in, DataOutputStream out) throws Exception{
+  // 핸들러가 사용할 DAO : 의존 객체(dependency)
+  MemberDao memberDao;
 
+  // DAO 객체는 이 클래스가 작업하는데 필수 객체이기 때문에
+  // 생성자를 통해 반드시 주입 받도록 한다.
+  public MemberValidator(MemberDao memberDao) {
+    this.memberDao = memberDao;
+  }
+
+  public Member inputMember(String promptTitle) throws Exception {
     while (true) {
       String name = Prompt.inputString(promptTitle);
       if (name.length() == 0) {
         return null;
       } 
 
-      // 서버에 지정한 번호의 데이터를 요청한다.
-      out.writeUTF("member/selectByName");
-      out.writeInt(1);
-      out.writeUTF(name);
-      out.flush();
-
-      // 서버의 응답을 받는다.
-      String status = in.readUTF();
-      in.readInt();
-      String data = in.readUTF();
-
-      if (status.equals("success")) {
-        String[] fields = data.split(",");
-        return fields[1];
+      Member m = memberDao.findByName(name);
+      if (m != null) {
+        return m;
       }
-      System.out.println("등록된 회원이 아닙니다.");
+      System.out.println("등록되지 않은 회원입니다.");
     }
   }
 
-  public static String inputMembers(
-      String promptTitle, DataInputStream in, DataOutputStream out) throws Exception{
-    String members = "";
+  public List<Member> inputMembers(String promptTitle) throws Exception {
+    ArrayList<Member> members = new ArrayList<>();
+
     while (true) {
-      String name = inputMember(promptTitle, in, out);
-      if (name == null) {
+      Member member = inputMember(promptTitle);
+      if (member == null) {
         return members;
       } else {
-        if (!members.isEmpty()) {
-          members += "/";
-        }
-        members += name;
+        members.add(member);
       }
     }
   }

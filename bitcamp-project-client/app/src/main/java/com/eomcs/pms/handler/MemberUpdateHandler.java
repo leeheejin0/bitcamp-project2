@@ -1,38 +1,37 @@
 package com.eomcs.pms.handler;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import com.eomcs.pms.dao.MemberDao;
+import com.eomcs.pms.domain.Member;
 import com.eomcs.util.Prompt;
 
 public class MemberUpdateHandler implements Command {
 
+  // 핸들러가 사용할 DAO : 의존 객체(dependency)
+  MemberDao memberDao;
+
+  // DAO 객체는 이 클래스가 작업하는데 필수 객체이기 때문에
+  // 생성자를 통해 반드시 주입 받도록 한다.
+  public MemberUpdateHandler(MemberDao memberDao) {
+    this.memberDao = memberDao;
+  }
   @Override
-  public void service(DataInputStream in, DataOutputStream out) throws Exception {
+  public void service() throws Exception {
     System.out.println("[회원 변경]");
 
     int no = Prompt.inputInt("번호? ");
 
-    // 서버에 지정한 번호의 데이터를 요청한다.
-    out.writeUTF("member/select");
-    out.writeInt(1);
-    out.writeUTF(Integer.toString(no));
-    out.flush();
+    Member member = memberDao.findByNo(no);
 
-    // 서버의 응답을 받는다.
-    String status = in.readUTF();
-    in.readInt();
-
-    if (status.equals("error")) {
-      System.out.println(in.readUTF());
+    if (member == null) {
+      System.out.println("해당 번호의 회원이 없습니다.");
       return;
     }
 
-    String[] fields = in.readUTF().split(",");
-
-    String name = Prompt.inputString(String.format("이름(%s)? ", fields[1]));
-    String email = Prompt.inputString(String.format("이메일(%s)? ", fields[2]));
-    String photo = Prompt.inputString(String.format("사진(%s)? ", fields[3]));
-    String tel = Prompt.inputString(String.format("전화(%s)? ", fields[4]));
+    member.setName(Prompt.inputString(String.format("이름(%s)? ", member.getName())));
+    member.setEmail(Prompt.inputString(String.format("이메일(%s)? ", member.getEmail())));
+    member.setPassword(Prompt.inputString("새암호? "));
+    member.setPhoto(Prompt.inputString(String.format("사진(%s)? ", member.getPhoto())));
+    member.setTel(Prompt.inputString(String.format("전화(%s)? ", member.getTel())));
 
     String input = Prompt.inputString("정말 변경하시겠습니까?(y/N) ");
     if (!input.equalsIgnoreCase("Y")) {
@@ -40,23 +39,9 @@ public class MemberUpdateHandler implements Command {
       return;
     }
 
-    // 서버에 데이터 변경을 요청한다.
-    out.writeUTF("member/update");
-    out.writeInt(1);
-    out.writeUTF(String.format("%d,%s,%s,%s,%s", no, name, email, photo, tel));
-    out.flush();
-
-    // 서버의 응답을 받는다.
-    status = in.readUTF();
-    in.readInt();
-
-    if (status.equals("error")) {
-      System.out.println(in.readUTF());
-      return;
-    }
+    memberDao.update(member);
 
     System.out.println("회원을 변경하였습니다.");
-
   }
 }
 

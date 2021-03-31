@@ -1,32 +1,24 @@
 package com.eomcs.pms.handler;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import com.eomcs.pms.dao.BoardDao;
 import com.eomcs.util.Prompt;
 
 public class BoardDeleteHandler implements Command {
 
+  // 핸들러가 사용할 DAO : 의존 객체(dependency)
+  BoardDao boardDao;
+
+  // DAO 객체는 이 클래스가 작업하는데 필수 객체이기 때문에
+  // 생성자를 통해 반드시 주입 받도록 한다.
+  public BoardDeleteHandler(BoardDao boardDao) {
+    this.boardDao = boardDao;
+  }
+
   @Override
-  public void service(DataInputStream in, DataOutputStream out) throws Exception {
+  public void service() throws Exception {
     System.out.println("[게시글 삭제]");
 
     int no = Prompt.inputInt("번호? ");
-
-    // 서버에 해당 번호의 게시글이 있는지 조회한다.
-    out.writeUTF("board/select");
-    out.writeInt(1);
-    out.writeUTF(Integer.toString(no));
-    out.flush();
-
-    // 서버의 응답을 읽는다.
-    String status = in.readUTF();
-    in.readInt();
-    String data = in.readUTF();
-
-    if (status.equals("error")) {
-      System.out.println(data);
-      return;
-    }
 
     String input = Prompt.inputString("정말 삭제하시겠습니까?(y/N) ");
     if (!input.equalsIgnoreCase("Y")) {
@@ -34,22 +26,11 @@ public class BoardDeleteHandler implements Command {
       return;
     }
 
-    // 서버에 데이터 삭제를 요청한다.
-    out.writeUTF("board/delete");
-    out.writeInt(1);
-    out.writeUTF(Integer.toString(no));
-    out.flush();
-
-    // 서버의 응답을 읽는다.
-    status = in.readUTF();
-    in.readInt();
-
-    if (status.equals("error")) {
-      System.out.println(in.readUTF());
-      return;
+    if (boardDao.delete(no) == 0) {
+      System.out.println("해당 번호의 게시글이 없습니다.");
+    } else {
+      System.out.println("게시글을 삭제하였습니다.");
     }
-
-    System.out.println("게시글을 삭제하였습니다.");
   }
 }
 

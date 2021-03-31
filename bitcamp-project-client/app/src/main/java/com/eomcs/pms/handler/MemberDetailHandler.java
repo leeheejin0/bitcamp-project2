@@ -1,39 +1,38 @@
 package com.eomcs.pms.handler;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import com.eomcs.pms.dao.MemberDao;
+import com.eomcs.pms.domain.Member;
 import com.eomcs.util.Prompt;
 
 public class MemberDetailHandler implements Command {
 
+  // 핸들러가 사용할 DAO : 의존 객체(dependency)
+  MemberDao memberDao;
+
+  // DAO 객체는 이 클래스가 작업하는데 필수 객체이기 때문에
+  // 생성자를 통해 반드시 주입 받도록 한다.
+  public MemberDetailHandler(MemberDao memberDao) {
+    this.memberDao = memberDao;
+  }
+
   @Override
-  public void service(DataInputStream in, DataOutputStream out) throws Exception {
+  public void service() throws Exception {
     System.out.println("[회원 상세보기]");
 
     int no = Prompt.inputInt("번호? ");
 
-    // 서버에 지정한 번호의 데이터를 요청한다.
-    out.writeUTF("member/select");
-    out.writeInt(1);
-    out.writeUTF(Integer.toString(no));
-    out.flush();
+    Member m = memberDao.findByNo(no);
 
-    // 서버의 응답을 받는다.
-    String status = in.readUTF();
-    in.readInt();
-
-    if (status.equals("error")) {
-      System.out.println(in.readUTF());
+    if (m == null) {
+      System.out.println("해당 번호의 회원이 없습니다.");
       return;
     }
 
-    String[] fields = in.readUTF().split(",");
-
-    System.out.printf("이름: %s\n", fields[1]);
-    System.out.printf("이메일: %s\n", fields[2]);
-    System.out.printf("사진: %s\n", fields[3]);
-    System.out.printf("전화: %s\n", fields[4]);
-    System.out.printf("가입일: %s\n", fields[5]);
+    System.out.printf("이름: %s\n", m.getName());
+    System.out.printf("이메일: %s\n", m.getEmail());
+    System.out.printf("사진: %s\n", m.getPhoto());
+    System.out.printf("전화: %s\n", m.getTel());
+    System.out.printf("가입일: %s\n", m.getRegisteredDate());
   }
 }
 

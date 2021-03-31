@@ -1,13 +1,24 @@
 package com.eomcs.pms.handler;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.util.List;
+import com.eomcs.pms.dao.BoardDao;
+import com.eomcs.pms.domain.Board;
 import com.eomcs.util.Prompt;
 
 public class BoardSearchHandler implements Command {
 
+
+  // 핸들러가 사용할 DAO : 의존 객체(dependency)
+  BoardDao boardDao;
+
+  // DAO 객체는 이 클래스가 작업하는데 필수 객체이기 때문에
+  // 생성자를 통해 반드시 주입 받도록 한다.
+  public BoardSearchHandler(BoardDao boardDao) {
+    this.boardDao = boardDao;
+  }
+
   @Override
-  public void service(DataInputStream in, DataOutputStream out) throws Exception {
+  public void service() throws Exception {
     String keyword = Prompt.inputString("검색어? ");
 
     if (keyword.length() == 0) {
@@ -15,35 +26,20 @@ public class BoardSearchHandler implements Command {
       return;
     }
 
-    // 서버에 지정한 번호의 게시글을 요청한다.
-    out.writeUTF("board/selectByKeyword");
-    out.writeInt(1);
-    out.writeUTF(keyword);
-    out.flush();
+    List<Board> list = boardDao.findByKeyword(keyword);
 
-    // 서버의 응답을 받는다.
-    String status = in.readUTF();
-    int length = in.readInt();
-
-    if (status.equals("error")) {
-      System.out.println(in.readUTF());
-      return;
-    }
-
-    if (length == 0) {
+    if (list.size() == 0) {
       System.out.println("검색어에 해당하는 게시글이 없습니다.");
       return;
     }
 
-    for (int i = 0; i < length; i++) {
-      String[] fields = in.readUTF().split(",");
-
-      System.out.printf("%s, %s, %s, %s, %s\n", 
-          fields[0], 
-          fields[1], 
-          fields[2],
-          fields[3],
-          fields[4]);
+    for (Board b : list) {
+      System.out.printf("%d, %s, %s, %s, %d\n", 
+          b.getNo(), 
+          b.getTitle(), 
+          b.getWriter().getName(),
+          b.getRegisteredDate(),
+          b.getViewCount());
     }
   }
 }

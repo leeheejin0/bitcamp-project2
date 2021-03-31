@@ -1,12 +1,13 @@
 package com.eomcs.pms;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.net.Socket;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import com.eomcs.pms.dao.mariadb.BoardDaoImpl;
+import com.eomcs.pms.dao.mariadb.MemberDaoImpl;
+import com.eomcs.pms.dao.mariadb.ProjectDaoImpl;
+import com.eomcs.pms.dao.mariadb.TaskDaoImpl;
 import com.eomcs.pms.handler.BoardAddHandler;
 import com.eomcs.pms.handler.BoardDeleteHandler;
 import com.eomcs.pms.handler.BoardDetailHandler;
@@ -19,6 +20,7 @@ import com.eomcs.pms.handler.MemberDeleteHandler;
 import com.eomcs.pms.handler.MemberDetailHandler;
 import com.eomcs.pms.handler.MemberListHandler;
 import com.eomcs.pms.handler.MemberUpdateHandler;
+import com.eomcs.pms.handler.MemberValidator;
 import com.eomcs.pms.handler.ProjectAddHandler;
 import com.eomcs.pms.handler.ProjectDeleteHandler;
 import com.eomcs.pms.handler.ProjectDetailHandler;
@@ -41,8 +43,15 @@ public class ClientApp {
   int port;
 
   public static void main(String[] args) {
-    ClientApp app = new ClientApp("localHost", 8888);
-    app.execute();
+    ClientApp app = new ClientApp("localhost", 8888);
+
+    try {
+      app.execute();
+
+    } catch (Exception e) {
+      System.out.println("클라이언트 실행 중 오류 발생!");
+      e.printStackTrace();
+    }
   }
 
   public ClientApp(String serverAddress, int port) {
@@ -50,39 +59,45 @@ public class ClientApp {
     this.port = port;
   }
 
-  public void execute() {
+  public void execute() throws Exception {
+
+    // 핸들러가 사용할 DAO 객체 준비
+    BoardDaoImpl boardDao = new BoardDaoImpl();
+    MemberDaoImpl memberDao = new MemberDaoImpl();
+    ProjectDaoImpl projectDao = new ProjectDaoImpl();
+    TaskDaoImpl taskDao = new TaskDaoImpl();
 
     // 사용자 명령을 처리하는 객체를 맵에 보관한다.
     HashMap<String,Command> commandMap = new HashMap<>();
 
-    commandMap.put("/board/add", new BoardAddHandler());
-    commandMap.put("/board/list", new BoardListHandler());
-    commandMap.put("/board/detail", new BoardDetailHandler());
-    commandMap.put("/board/update", new BoardUpdateHandler());
-    commandMap.put("/board/delete", new BoardDeleteHandler());
-    commandMap.put("/board/search", new BoardSearchHandler());
+    commandMap.put("/board/add", new BoardAddHandler(boardDao));
+    commandMap.put("/board/list", new BoardListHandler(boardDao));
+    commandMap.put("/board/detail", new BoardDetailHandler(boardDao));
+    commandMap.put("/board/update", new BoardUpdateHandler(boardDao));
+    commandMap.put("/board/delete", new BoardDeleteHandler(boardDao));
+    commandMap.put("/board/search", new BoardSearchHandler(boardDao));
 
-    commandMap.put("/member/add", new MemberAddHandler());
-    commandMap.put("/member/list", new MemberListHandler());
-    commandMap.put("/member/detail", new MemberDetailHandler());
-    commandMap.put("/member/update", new MemberUpdateHandler());
-    commandMap.put("/member/delete", new MemberDeleteHandler());
+    commandMap.put("/member/add", new MemberAddHandler(memberDao));
+    commandMap.put("/member/list", new MemberListHandler(memberDao));
+    commandMap.put("/member/detail", new MemberDetailHandler(memberDao));
+    commandMap.put("/member/update", new MemberUpdateHandler(memberDao));
+    commandMap.put("/member/delete", new MemberDeleteHandler(memberDao));
 
-    commandMap.put("/project/add", new ProjectAddHandler());
-    commandMap.put("/project/list", new ProjectListHandler());
-    commandMap.put("/project/detail", new ProjectDetailHandler());
-    commandMap.put("/project/update", new ProjectUpdateHandler());
-    commandMap.put("/project/delete", new ProjectDeleteHandler());
+    MemberValidator memberValidator = new MemberValidator(memberDao);
 
-    commandMap.put("/task/add", new TaskAddHandler());
-    commandMap.put("/task/list", new TaskListHandler());
-    commandMap.put("/task/detail", new TaskDetailHandler());
-    commandMap.put("/task/update", new TaskUpdateHandler());
-    commandMap.put("/task/delete", new TaskDeleteHandler());
+    commandMap.put("/project/add", new ProjectAddHandler(projectDao, memberValidator));
+    commandMap.put("/project/list", new ProjectListHandler(projectDao));
+    commandMap.put("/project/detail", new ProjectDetailHandler(projectDao));
+    commandMap.put("/project/update", new ProjectUpdateHandler(projectDao, memberValidator));
+    commandMap.put("/project/delete", new ProjectDeleteHandler(projectDao));
 
-    try (Socket socket = new Socket(this.serverAddress, this.port);
-        DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-        DataInputStream in = new DataInputStream(socket.getInputStream())) {
+    commandMap.put("/task/add", new TaskAddHandler(taskDao, projectDao, memberValidator));
+    commandMap.put("/task/list", new TaskListHandler(taskDao));
+    commandMap.put("/task/detail", new TaskDetailHandler(taskDao));
+    commandMap.put("/task/update", new TaskUpdateHandler(taskDao, projectDao, memberValidator));
+    commandMap.put("/task/delete", new TaskDeleteHandler(taskDao));
+
+    try {
 
       while (true) {
 
@@ -101,22 +116,11 @@ public class ClientApp {
             case "history":
               printCommandHistory(commandStack.iterator());
               break;
-            case "history2": 
+            case "history2":
               printCommandHistory(commandQueue.iterator());
               break;
             case "quit":
             case "exit":
-              // 서버에게 종료한다고 메시지를 보낸다.
-              out.writeUTF("quit");
-              out.writeInt(0);
-              out.flush();
-
-              // 서버의 응답을 읽는다.
-              // - 서버가 보낸 응답을 읽지 않으면 프로토콜 위반이다.
-              // - 서버가 보낸 데이터를 사용하지 않더라도 프로토콜 규칙에 따라 읽어야 한다.
-              in.readUTF();
-              in.readInt();
-
               System.out.println("안녕!");
               return;
             default:
@@ -125,7 +129,7 @@ public class ClientApp {
               if (commandHandler == null) {
                 System.out.println("실행할 수 없는 명령입니다.");
               } else {
-                commandHandler.service(in, out);
+                commandHandler.service();
               }
           }
         } catch (Exception e) {

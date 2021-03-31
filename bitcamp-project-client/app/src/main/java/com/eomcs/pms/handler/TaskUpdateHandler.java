@@ -1,43 +1,84 @@
 package com.eomcs.pms.handler;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.sql.Date;
+import java.util.List;
+import com.eomcs.pms.dao.ProjectDao;
+import com.eomcs.pms.dao.TaskDao;
+import com.eomcs.pms.domain.Project;
 import com.eomcs.pms.domain.Task;
 import com.eomcs.util.Prompt;
 
 public class TaskUpdateHandler implements Command {
 
+  TaskDao taskDao;
+  ProjectDao projectDao;
+  MemberValidator memberValidator;
+
+  public TaskUpdateHandler(TaskDao taskDao, ProjectDao projectDao, MemberValidator memberValidator) {
+    this.taskDao = taskDao;
+    this.projectDao = projectDao;
+    this.memberValidator = memberValidator;
+  }
+
+
   @Override
-  public void service(DataInputStream in, DataOutputStream out) throws Exception {
+  public void service() throws Exception {
     System.out.println("[작업 변경]");
 
     int no = Prompt.inputInt("번호? ");
 
-    // 서버에 지정한 번호의 데이터를 요청한다.
-    out.writeUTF("task/select");
-    out.writeInt(1);
-    out.writeUTF(Integer.toString(no));
-    out.flush();
-
-    // 서버의 응답을 받는다.
-    String status = in.readUTF();
-    in.readInt();
-
-    if (status.equals("error")) {
-      System.out.println(in.readUTF());
+    Task task = taskDao.findByNo(no);
+    if (task == null) {
+      System.out.println("해당 번호의 작업이 없습니다.");
       return;
     }
 
-    String[] fields = in.readUTF().split(",");
+    System.out.printf("현재 프로젝트: %s\n", task.getProjectTitle());
 
-    String content = Prompt.inputString(String.format("내용(%s)? ", fields[1]));
-    Date deadline = Prompt.inputDate(String.format("마감일(%s)? ", fields[2]));
-    int stat = Prompt.inputInt(String.format(
-        "상태(%s)?\n0: 신규\n1: 진행중\n2: 완료\n> ", 
-        Task.getStatusLabel(Integer.parseInt(fields[3]))));
-    String owner = MemberValidator.inputMember(String.format("담당자(%s)?(취소: 빈 문자열) ", fields[4]), in, out);
-    if(owner == null) {
+    List<Project> projects = projectDao.findAll();
+    System.out.println("프로젝트들:");
+    if (projects.size() == 0) {
+      System.out.println("현재 등록된 프로젝트가 없습니다!");
+      return;
+    }
+    for (Project p : projects) {
+      System.out.printf("  %d, %s\n", p.getNo(), p.getTitle());
+    }
+
+    // 현재 작업이 소속된 프로젝트를 변경한다.
+    int selectedProjectNo = 0;
+    loop: while (true) {
+      try {
+        selectedProjectNo = Prompt.inputInt("변경할 프로젝트 번호?(취소: 0) ");
+        if (selectedProjectNo == 0) {
+          System.out.println("기존 프로젝트를 유지합니다.");
+          break loop;
+        }
+        for (Project p : projects) {
+          if (p.getNo() == selectedProjectNo) {
+            break loop;
+          }
+        }
+        System.out.println("유효하지 않은 프로젝트 번호 입니다.");
+
+      } catch (Exception e) {
+        System.out.println("숫자를 입력하세요!");
+      }
+    }
+
+    if (selectedProjectNo != 0) {
+      task.setProjectNo(selectedProjectNo);
+    }
+
+    // 사용자에게서 변경할 데이터를 입력 받는다.
+    task.setContent(Prompt.inputString(String.format("내용(%s)? ", task.getContent())));
+    task.setDeadline(Prompt.inputDate(String.format("마감일(%s)? ", task.getDeadline())));
+    task.setStatus(Prompt.inputInt(String.format(
+        "상태(%s)?\n0: 신규\n1: 진행중\n2: 완료\n> ",
+        Task.getStatusLabel(task.getStatus()))));
+    task.setOwner(memberValidator.inputMember(
+        String.format("담당자(%s)?(취소: 빈 문자열) ", task.getOwner().getName())));
+
+    if(task.getOwner() == null) {
       System.out.println("작업 변경을 취소합니다.");
       return;
     }
@@ -48,22 +89,9 @@ public class TaskUpdateHandler implements Command {
       return;
     }
 
-    // 서버에 데이터 변경을 요청한다.
-    out.writeUTF("task/update");
-    out.writeInt(1);
-    out.writeUTF(String.format("%s,%s,%s,%s,%s", no, content, deadline, stat, owner));
-    out.flush();
+    // DBMS에게 게시글 변경을 요청한다.
+    taskDao.update(task);
 
-    // 서버의 응답을 받는다.
-    status = in.readUTF();
-    in.readInt();
-
-    if (status.equals("error")) {
-      System.out.println(in.readUTF());
-      return;
-    }
     System.out.println("작업을 변경하였습니다.");
-
   }
-
 }

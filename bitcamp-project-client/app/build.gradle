@@ -20,6 +20,9 @@ repositories {
 }
 
 dependencies {
+    // MariaDB JDBC 드라이버
+    implementation 'org.mariadb.jdbc:mariadb-java-client:2.7.2'
+
     // Use JUnit test framework.
     testImplementation 'junit:junit:4.13'
 
